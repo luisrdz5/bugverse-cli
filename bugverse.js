@@ -12,11 +12,14 @@ const moment = require('moment')
 const agent = new BugverseAgent()
 const screen = blessed.screen()
 
-
 const agents = new Map()
 const agentMetrics = new Map()
-let extended = [] 
-
+let extended = []
+let select = {
+  uuid: null,
+  type: null
+}
+let idx = 0
 
 const grid = new contrib.grid({
   rows: 1,
@@ -25,7 +28,7 @@ const grid = new contrib.grid({
 })
 
 const tree = grid.set(0, 0, 1, 1, contrib.tree, {
-    label: 'Connected Agents'
+  label: 'Connected Agents'
 })
 
 const line = grid.set(0, 1, 1, 3, contrib.line, {
@@ -36,85 +39,108 @@ const line = grid.set(0, 1, 1, 3, contrib.line, {
 })
 
 agent.on('agent/connected', payload => {
-    const { uuid } = payload.agent
-    if(!agents.has(uuid)){
-        agents.set(uuid, payload.agent)
-        agentMetrics.set(uuid, {})
-    }
-    renderData()
+  const { uuid } = payload.agent
+  if (!agents.has(uuid)) {
+    agents.set(uuid, payload.agent)
+    agentMetrics.set(uuid, {})
+  }
+  renderData()
 })
 agent.on('agent/disconnected', payload => {
-    const { uuid } = payload.agent
-    if(agents.has(uuid)){
-        agents.delete(uuid)
-        agentMetrics.delete(uuid)
-    }
-    renderData()
+  const { uuid } = payload.agent
+  if (agents.has(uuid)) {
+    agents.delete(uuid)
+    agentMetrics.delete(uuid)
+  }
+  renderData()
 })
 agent.on('agent/message', payload => {
-    const { uuid } = payload.agent
-    const { timestamp } = payload
-    
-       
-    if(!agents.has(uuid)){
-        agents.set(uuid, payload.agent)
-        agentMetrics.set(uuid, {})
+  const { uuid } = payload.agent
+  const { timestamp } = payload
+
+  if (!agents.has(uuid)) {
+    agents.set(uuid, payload.agent)
+    agentMetrics.set(uuid, {})
+  }
+  const metrics = agentMetrics.get(uuid)
+
+  payload.metrics.forEach(m => {
+    const { type, value } = m
+    if (!Array.isArray(metrics[type])) {
+      metrics[type] = []
     }
-    const metrics = agentMetrics.get(uuid)
 
-    payload.metrics.forEach(m => {
-        const { type, value } = m 
-        if(!Array.isArray(metrics[type])){
-            metrics[type] = []
-        }
+    const length = metrics[type].length
+    if (length >= 20) {
+      metrics[type].shift()
+    }
 
-        const length = metrics[type].length
-        if(length >= 20){
-            metrics[type].shift()
-        }
-
-        metrics[type].push({
-            value,
-            timestamp: moment(timestamp).format('HH:mm:ss')
-        })
+    metrics[type].push({
+      value,
+      timestamp: moment(timestamp).format('HH:mm:ss')
     })
-    renderData()
+  })
+  renderData()
 })
 
 tree.on('select', node => {
-    const {uuid} = node
-    if(node.agent) {
-        node.extended ? extended.push(uuid): extended = extended.filter(e => e === uuid)
-    }
+  const {uuid} = node
+  if (node.agent) {
+    node.extended ? extended.push(uuid) : extended = extended.filter(e => e === uuid)
+    select.uuid = null
+    select.type = null
+    return
+  }
+  select.uuid = uuid
+  select.type = node.type
+
+  rendermetric()
 })
 
-function renderData() {
-    const treeData = {}
+function renderData () {
+  const treeData = {}
 
-    for(let [uuid, val] of agents){
-        const title = `${val.name} - (${val.pid})`
-        treeData[title]= {
-            uuid,
-            agent: true,
-            extended: extended.includes(uuid),
-            children: {}
-        }
-        const metrics = agentMetrics.get(uuid)
-        Object.keys(metrics).forEach(type => {
-            const metric = {
-                uuid,
-                type,
-                metric: true
-            }
-            const metricName = `${type}`
-            treeData[title].children[metricName] = metric
-        })
+  for (let [uuid, val] of agents) {
+    const title = `${val.name} - (${val.pid})`
+    treeData[title] = {
+      uuid,
+      agent: true,
+      extended: extended.includes(uuid),
+      children: {}
     }
-    tree.setData({ 
-        extended: true, 
-        children: treeData
+    const metrics = agentMetrics.get(uuid)
+    Object.keys(metrics).forEach(type => {
+      const metric = {
+        uuid,
+        type,
+        metric: true
+      }
+      const metricName = `${type} ${' '.repeat(1000)} ${idx++}`
+      treeData[title].children[metricName] = metric
     })
+  }
+  tree.setData({
+    extended: true,
+    children: treeData
+  })
+  rendermetric()
+}
+
+function rendermetric () {
+  if (!select.uuid || !select.type) {
+    line.setData([{ x: [], y: [], title: '' }])
     screen.render()
+    return
+  }
+  const metrics = agentMetrics.get(select.uuid)
+  const values = metrics[select.type]
+  const series = [{
+    title: select.type,
+    x: values.map(v => v.timestamp).slice(-10),
+    y: values.map(v => v.value).slice(-10)
+  }]
+  line.setData(series)
+  screen.render()
 }
 
 screen.key([ 'escape', 'q', 'C-c' ], (ch, key) => {

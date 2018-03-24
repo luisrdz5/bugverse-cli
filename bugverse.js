@@ -15,6 +15,7 @@ const screen = blessed.screen()
 
 const agents = new Map()
 const agentMetrics = new Map()
+let extended = [] 
 
 
 const grid = new contrib.grid({
@@ -80,7 +81,12 @@ agent.on('agent/message', payload => {
     renderData()
 })
 
-
+tree.on('select', node => {
+    const {uuid} = node
+    if(node.agent) {
+        node.extended ? extended.push(uuid): extended = extended.filter(e => e === uuid)
+    }
+})
 
 function renderData() {
     const treeData = {}
@@ -90,6 +96,7 @@ function renderData() {
         treeData[title]= {
             uuid,
             agent: true,
+            extended: extended.includes(uuid),
             children: {}
         }
         const metrics = agentMetrics.get(uuid)

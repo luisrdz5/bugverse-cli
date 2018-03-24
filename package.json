@@ -1,0 +1,29 @@
+{
+  "name": "bugverse-cli",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Simple IoT Platform - CLI ",
+  "bin": "bugverse.js",
+  "scripts": {
+    "lint": "standard"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luisrdz5/bugverse-cli.git"
+  },
+  "author": "Luis Antonio Rodriguez garcia",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/luisrdz5/bugverse-cli/issues"
+  },
+  "homepage": "https://github.com/luisrdz5/bugverse-cli#readme",
+  "devDependencies": {
+    "minimist": "^1.2.0",
+    "standard": "^11.0.1"
+  },
+  "dependencies": {
+    "args": "^3.0.8",
+    "blessed": "^0.1.81",
+    "blessed-contrib": "^4.8.5"
+  }
+}

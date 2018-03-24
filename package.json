@@ -24,6 +24,8 @@
   "dependencies": {
     "args": "^3.0.8",
     "blessed": "^0.1.81",
-    "blessed-contrib": "^4.8.5"
+    "blessed-contrib": "^4.8.5",
+    "bugverse-agent": "file:../bugverse-agent",
+    "moment": "^2.21.0"
   }
 }
